@@ -25,25 +25,25 @@ export interface ComboItem {
 export const GALLERY_IMAGES: ProductGalleryImage[] = [
   {
     id: 'combo-full',
-    src: '/assets/aistudio/IMG-20261009-WA0060_6d549559.jpg',
+    src: './assets/aistudio/IMG-20261009-WA0060_6d549559.jpg',
     alt: 'সম্পূর্ণ ১৫ আইটেমের রোমান্টিক গিফট কম্বো বক্স — রোজ রিং, লাভ কার্ড, চকলেট, জুয়েলারি ও টিপ',
     caption: 'সম্পূর্ণ ১৫ আইটেমের রোমান্টিক গিফট কম্বো — মাত্র ৳৫৯৯ (ফ্রি ডেলিভারি)',
   },
   {
     id: 'ring-closeup',
-    src: '/assets/aistudio/IMG_20260620_165842_dad54ecb.jpg',
+    src: './assets/aistudio/IMG_20260620_165842_dad54ecb.jpg',
     alt: 'লাল ভেলভেট রোজ রিং বক্সের ভেতরে গোল্ডেন স্টোন আংটি',
     caption: 'ভেলভেট রোজ বক্স ও ডায়মন্ড-কাট আংটি',
   },
   {
     id: 'ring-front',
-    src: '/assets/aistudio/IMG_20260620_165846_80a4cac5.jpg',
+    src: './assets/aistudio/IMG_20260620_165846_80a4cac5.jpg',
     alt: 'হাতে ধরা খোলা লাল গোলাপ রিং বক্স ও আংটি',
     caption: 'হাতে ধরে প্রপোজ বা সারপ্রাইজ দেওয়ার মতো পারফেক্ট সাইজ',
   },
   {
     id: 'ring-stem',
-    src: '/assets/aistudio/IMG-20260728-WA0057_ee5d712d.jpg',
+    src: './assets/aistudio/IMG-20260728-WA0057_ee5d712d.jpg',
     alt: 'ডাঁটা ও সবুজ পাতাসহ লাল গোলাপ রিং বক্স',
     caption: 'বাস্তবসম্মত ডাঁটা ও পাতাসহ রোজ রিং বক্স',
   },
@@ -56,7 +56,7 @@ export const GIFT_PACKAGES: GiftPackage[] = [
     subtitle: 'আর্টিফিশিয়াল গোলাপ ও ডায়মন্ড কাট রিংসহ মোট ১৫টি আকর্ষণীয় উপহার',
     price: 599,
     regularPrice: 890,
-    image: '/assets/aistudio/IMG-20261009-WA0060_6d549559.jpg',
+    image: './assets/aistudio/IMG-20261009-WA0060_6d549559.jpg',
     shortNote: 'প্রিয় মানুষকে সারপ্রাইজ দেওয়ার জন্য ১৫টি প্রিমিয়াম উপহারসহ সম্পূর্ণ গিফট প্যাকেজ',
     highlights: [
       'আর্টিফিশিয়াল গোলাপ, ডায়মন্ড কাট রিং, নোসেপিন ও কানের দুলসহ ১৫টি আইটেম',

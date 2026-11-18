@@ -1,38 +1,47 @@
-import { FormEvent, useState } from 'react';
-import { CheckCircle2, Copy, Minus, Plus, RotateCcw } from 'lucide-react';
+import { FormEvent, useRef, useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import {
   GIFT_PACKAGES,
   formatBDT,
 } from '../data/products';
+import { trackMetaEvent } from '../lib/metaPixel';
+import { submitWooOrder } from '../lib/woocommerceClient';
+import type { ConfirmedOrder } from './ThankYouPage';
 
-interface ConfirmedOrder {
-  orderCode: string;
-  customerName: string;
-  phone: string;
-  address: string;
-  deliveryZone: 'inside' | 'outside';
-  packageName: string;
-  quantity: number;
-  subtotal: number;
-  total: number;
+interface OrderSectionProps {
+  onOrderConfirmed: (order: ConfirmedOrder) => void;
 }
 
-export function OrderSection() {
+export function OrderSection({ onOrderConfirmed }: OrderSectionProps) {
   const [quantity, setQuantity] = useState(1);
   const [deliveryZone, setDeliveryZone] = useState<'inside' | 'outside'>('inside');
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(null);
-  const [copied, setCopied] = useState(false);
+  const checkoutTrackedRef = useRef(false);
 
   const selectedPkg = GIFT_PACKAGES[0];
   const subtotal = selectedPkg.price * quantity;
   const total = subtotal;
 
-  function handleSubmit(e: FormEvent) {
+  function markInitiateCheckout() {
+    if (checkoutTrackedRef.current) return;
+    checkoutTrackedRef.current = true;
+    void trackMetaEvent({
+      eventName: 'InitiateCheckout',
+      value: total,
+      currency: 'BDT',
+      contentName: selectedPkg.name,
+      contentIds: [selectedPkg.id],
+      numItems: quantity,
+    });
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorMessage('');
 
     const trimmedName = customerName.trim();
@@ -54,34 +63,43 @@ export function OrderSection() {
       return;
     }
 
-    const randomCode = `GM-${Math.floor(1000 + Math.random() * 9000)}`;
-    setConfirmedOrder({
-      orderCode: randomCode,
+    setIsSubmitting(true);
+    let finalOrderCode = `GM-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      const result = await submitWooOrder({
+        customerName: trimmedName,
+        phone: trimmedPhone,
+        address: trimmedAddress,
+        deliveryZone,
+        quantity,
+        packageName: selectedPkg.name,
+        unitPrice: selectedPkg.price,
+      });
+      finalOrderCode = result.orderCode;
+    } finally {
+      setIsSubmitting(false);
+    }
+
+    const orderPayload: ConfirmedOrder = {
+      orderCode: finalOrderCode,
       customerName: trimmedName,
       phone: trimmedPhone,
       address: trimmedAddress,
       deliveryZone,
+      packageId: selectedPkg.id,
       packageName: selectedPkg.name,
       quantity,
       subtotal,
       total,
-    });
-  }
+    };
 
-  function handleCopyOrderId() {
-    if (!confirmedOrder) return;
-    navigator.clipboard?.writeText(confirmedOrder.orderCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function handleResetOrder() {
-    setConfirmedOrder(null);
     setCustomerName('');
     setPhone('');
     setAddress('');
     setQuantity(1);
     setErrorMessage('');
+    onOrderConfirmed(orderPayload);
   }
 
   return (
@@ -103,84 +121,6 @@ export function OrderSection() {
             </p>
           </div>
 
-          {confirmedOrder ? (
-            <div className="mt-8 rounded-2xl border border-[#D8E5D9] bg-[#F7FBF7] p-6 sm:p-8">
-              <div className="flex flex-col justify-between gap-4 border-b border-[#E1ECE2] pb-5 sm:flex-row sm:items-center">
-                <div className="flex items-start gap-3.5">
-                  <CheckCircle2 className="mt-0.5 h-7 w-7 shrink-0 text-[#236B39]" />
-                  <div>
-                    <h3 className="font-display text-xl font-bold text-[#193B23]">
-                      অর্ডার #{confirmedOrder.orderCode} নিশ্চিত হয়েছে
-                    </h3>
-                    <p className="mt-1 text-sm text-[#355A40]">
-                      ধন্যবাদ {confirmedOrder.customerName}। আপনার গিফট প্যাকেজটি সুন্দরভাবে প্রস্তুত করা হচ্ছে।
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCopyOrderId}
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C6DBC9] bg-white px-3.5 py-2 text-xs font-semibold text-[#1E472A] transition-colors hover:bg-[#EFF6F0] whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  <span>{copied ? 'কপি হয়েছে' : 'অর্ডার কোড কপি করুন'}</span>
-                </button>
-              </div>
-
-              <div className="mt-5 grid grid-cols-1 gap-4 text-sm text-[#2B3B2F] sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <p>
-                    <span className="font-semibold">প্যাকেজ:</span>{' '}
-                    {confirmedOrder.packageName} ({formatBDT(confirmedOrder.quantity)}টি)
-                  </p>
-                  <p>
-                    <span className="font-semibold">মোবাইল:</span>{' '}
-                    <span className="tabular-nums">{confirmedOrder.phone}</span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">ঠিকানা:</span> {confirmedOrder.address}
-                  </p>
-                </div>
-
-                <div className="space-y-1.5 rounded-xl border border-[#DCE8DD] bg-white p-4">
-                  <div className="flex justify-between">
-                    <span>পণ্যের মূল্য</span>
-                    <span className="font-semibold tabular-nums">
-                      ৳{formatBDT(confirmedOrder.subtotal)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>
-                      ডেলিভারি চার্জ (
-                      {confirmedOrder.deliveryZone === 'inside'
-                        ? 'ঢাকার ভেতরে'
-                        : 'ঢাকার বাইরে'}
-                      )
-                    </span>
-                    <span className="font-semibold text-[#236B39]">ফ্রি (৳০)</span>
-                  </div>
-                  <div className="flex justify-between border-t border-[#E8EFE9] pt-2 text-base font-bold text-[#193B23]">
-                    <span>সর্বমোট (ক্যাশ অন ডেলিভারি)</span>
-                    <span className="tabular-nums">
-                      ৳{formatBDT(confirmedOrder.total)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={handleResetOrder}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-[#8B1E3F] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#721632] cursor-pointer"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>নতুন আরেকটি অর্ডার করুন</span>
-                </button>
-              </div>
-            </div>
-          ) : (
             <form
               onSubmit={handleSubmit}
               noValidate
@@ -214,6 +154,7 @@ export function OrderSection() {
                       id="customer-name"
                       type="text"
                       value={customerName}
+                      onFocus={markInitiateCheckout}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="যেমন: তানভীর আহমেদ"
                       className="w-full rounded-xl border border-[#DFD1CC] bg-white px-4 py-3 text-sm text-[#1E1618] placeholder:text-[#9A888C] focus:border-[#8B1E3F] focus:outline-none"
@@ -231,6 +172,7 @@ export function OrderSection() {
                       id="customer-phone"
                       type="tel"
                       value={phone}
+                      onFocus={markInitiateCheckout}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="017XXXXXXXX"
                       className="w-full rounded-xl border border-[#DFD1CC] bg-white px-4 py-3 text-sm text-[#1E1618] tabular-nums placeholder:text-[#9A888C] focus:border-[#8B1E3F] focus:outline-none"
@@ -362,9 +304,12 @@ export function OrderSection() {
 
                     <button
                       type="submit"
-                      className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-[#8B1E3F] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-[#721632] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B1E3F] cursor-pointer"
+                      disabled={isSubmitting}
+                      className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-[#8B1E3F] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-[#721632] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B1E3F] cursor-pointer"
                     >
-                      অর্ডার কনফার্ম করুন · ৳{formatBDT(total)}
+                      {isSubmitting
+                        ? 'অর্ডার পাঠানো হচ্ছে...'
+                        : `অর্ডার কনফার্ম করুন · ৳${formatBDT(total)}`}
                     </button>
                     <p className="mt-2.5 text-center text-xs text-[#6B575C]">
                       ক্যাশ অন ডেলিভারি — পণ্য হাতে পেয়ে টাকা পরিশোধ করবেন
@@ -373,7 +318,6 @@ export function OrderSection() {
                 </div>
               </div>
             </form>
-          )}
         </div>
       </div>
     </section>
